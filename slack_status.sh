@@ -24,9 +24,11 @@ TOKEN=$TOKEN
 
 PRESET_EMOJI_test=":white_check_mark:"
 PRESET_TEXT_test="Testing status updater"
+PRESET_TIME_test="0"
 
 PRESET_EMOJI_zoom=":zoom:"
 PRESET_TEXT_zoom="In a zoom meeting"
+PRESET_TIME_zoom="0"
 EOF
     echo
     echo "A default configuration has been created at ${green}$CONFIG_FILE.${reset}"
@@ -69,12 +71,14 @@ fi
 if [[ $PRESET == "none" ]]; then
     EMOJI=""
     TEXT=""
+    TIME=0
     echo "Resetting slack status to blank"
 else
     eval "EMOJI=\$PRESET_EMOJI_$PRESET"
     eval "TEXT=\$PRESET_TEXT_$PRESET"
+    eval "TIME=\$PRESET_TIME_$PRESET"
 
-    if [[ -z $EMOJI || -z $TEXT ]]; then
+    if [[ -z $EMOJI || -z $TEXT || -z $TIME ]]; then
         echo "${yellow}No preset found:${reset} $PRESET"
         echo
         echo "If this wasn't a typo, then you will want to add the preset to"
@@ -86,10 +90,17 @@ else
         TEXT="$TEXT $ADDITIONAL_TEXT"
     fi
 
-    echo "Updating status to: ${yellow}$EMOJI ${green}$TEXT${reset}"
+    if [[ $TIME -ne 0 ]]; then
+        EPOCHTIME=$(date +%s)
+        TIME=$((EPOCHTIME + TIME * 60))
+        HUMANTIME=$(date -d @$TIME)
+    else
+        HUMANTIME="no expiry"
+    fi
+    echo "Updating status to: ${yellow}$EMOJI ${green}$TEXT${reset} (exp: $HUMANTIME)"
 fi
 
-PROFILE="{\"status_emoji\":\"$EMOJI\",\"status_text\":\"$TEXT\"}"
+PROFILE="{\"status_emoji\":\"$EMOJI\",\"status_text\":\"$TEXT\",\"status_expiration\":$TIME}"
 RESPONSE=$(curl -s --data token="$TOKEN" \
     --data-urlencode profile="$PROFILE" \
     https://slack.com/api/users.profile.set)
